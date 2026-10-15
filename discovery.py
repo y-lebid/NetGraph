@@ -1,9 +1,16 @@
+
+import ipaddress
 import platform
+import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 MAX_WORKERS = 32
+
+MAC_PATTERN = re.compile(
+    r"^(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}$"
+)
 
 
 def ping_host(ip_address):
@@ -11,22 +18,20 @@ def ping_host(ip_address):
 
     if system == "Windows":
         command = [
-            "ping",
-            "-n", "1",
-            "-w", "500",
+            "ping", "-n", "1", "-w", "500",
             str(ip_address),
         ]
 
     elif system == "Linux":
         command = [
-            "ping",
-            "-c", "1",
-            "-W", "1",
+            "ping", "-c", "1", "-W", "1",
             str(ip_address),
         ]
 
     else:
-        raise RuntimeError(f"Unsupported operating system: {system}")
+        raise RuntimeError(
+            f"Unsupported operating system: {system}"
+        )
 
     result = subprocess.run(
         command,
@@ -47,7 +52,9 @@ def get_arp_table():
         command = ["ip", "neigh"]
 
     else:
-        raise RuntimeError(f"Unsupported operating system: {system}")
+        raise RuntimeError(
+            f"Unsupported operating system: {system}"
+        )
 
     result = subprocess.run(
         command,
@@ -61,8 +68,39 @@ def get_arp_table():
     return result.stdout
 
 
-def parse_arp_table(output):
-    devices = []
+def is_valid_device_ip(ip_address, network=None):
+    try:
+        address = ipaddress.ip_address(ip_address)
+    except ValueError:
+        return False
+
+    if not isinstance(address, ipaddress.IPv4Address):
+        return False
+
+    if (
+        address.is_multicast
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_unspecified
+        or address == ipaddress.IPv4Address("255.255.255.255")
+    ):
+        return False
+
+    if network is not None:
+        if address not in network:
+            return False
+
+        if (
+            address == network.network_address
+            or address == network.broadcast_address
+        ):
+            return False
+
+    return True
+
+
+def parse_arp_table(output, network=None):
+    devices = {}
 
     for line in output.splitlines():
         parts = line.split()
@@ -72,28 +110,35 @@ def parse_arp_table(output):
 
         ip_address = parts[0]
 
-        if not ip_address.replace(".", "").isdigit():
+        if not is_valid_device_ip(ip_address, network):
             continue
 
-        mac_address = None
+        mac_address = next(
+            (
+                part.lower()
+                for part in parts
+                if MAC_PATTERN.fullmatch(part)
+            ),
+            None,
+        )
 
-        for part in parts:
-            if "-" in part or ":" in part:
-                mac_address = part
-                break
+        if mac_address is None:
+            continue
 
-        devices.append({
+        devices[ip_address] = {
             "ip": ip_address,
             "mac": mac_address,
-        })
+        }
 
-    return devices
+    return list(devices.values())
 
 
 def discover_devices(network):
+    if not isinstance(network, ipaddress.IPv4Network):
+        raise ValueError("An IPv4 network is required")
+
     hosts = list(network.hosts())
     devices = {}
-
     total = len(hosts)
     completed = 0
 
@@ -106,17 +151,19 @@ def discover_devices(network):
         }
 
         for future in as_completed(futures):
-            ip = futures[future]
+            ip_address = futures[future]
             completed += 1
 
             try:
                 if future.result():
-                    devices[str(ip)] = {
-                        "ip": str(ip),
+                    devices[str(ip_address)] = {
+                        "ip": str(ip_address),
                         "mac": None,
                     }
-            except Exception:
-                pass
+            except Exception as error:
+                print(
+                    f"\n[!] Could not scan {ip_address}: {error}"
+                )
 
             print(
                 f"\r[*] Scanning: {completed}/{total} "
@@ -126,11 +173,14 @@ def discover_devices(network):
             )
 
     print()
-
     print("[*] Reading ARP table...")
 
-    arp_output = get_arp_table()
-    arp_devices = parse_arp_table(arp_output)
+    try:
+        arp_output = get_arp_table()
+        arp_devices = parse_arp_table(arp_output, network)
+    except (OSError, subprocess.SubprocessError) as error:
+        print(f"[!] Could not read ARP table: {error}")
+        arp_devices = []
 
     for device in arp_devices:
         ip_address = device["ip"]
@@ -140,13 +190,9 @@ def discover_devices(network):
         else:
             devices[ip_address] = device
 
-    result = list(devices.values())
-
-    result.sort(
-        key=lambda device: tuple(
-            int(part)
-            for part in device["ip"].split(".")
-        )
+    result = sorted(
+        devices.values(),
+        key=lambda device: ipaddress.ip_address(device["ip"]),
     )
 
     return result
