@@ -41,6 +41,40 @@ class TestGraph(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.graph.add_edge("PC", "Server", -1)
 
+    
+    def test_a_star_finds_shortest_path(self):
+        path, cost = self.graph.a_star("PC", "Server")
+
+        self.assertEqual(
+            path,
+            ["PC", "Router", "Switch", "Server"],
+        )
+        self.assertEqual(cost, 6)
+
+    def test_a_star_with_zero_heuristic(self):
+        path, cost = self.graph.a_star(
+            "PC",
+            "Server",
+            heuristic=lambda vertex, goal: 0,
+        )
+
+        self.assertEqual(path[0], "PC")
+        self.assertEqual(path[-1], "Server")
+        self.assertEqual(cost, 6)
+
+    def test_a_star_returns_empty_path_when_unreachable(self):
+        self.graph.add_vertex("Isolated")
+
+        path, cost = self.graph.a_star("PC", "Isolated")
+
+        self.assertEqual(path, [])
+        self.assertEqual(cost, float("inf"))
+
+    def test_a_star_rejects_unknown_vertex(self):
+        with self.assertRaises(ValueError):
+            self.graph.a_star("PC", "Unknown")
+
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

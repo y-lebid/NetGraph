@@ -1,4 +1,5 @@
-
+import heapq
+from itertools import count
 from collections import deque
 from math import inf
 
@@ -104,3 +105,73 @@ class Graph:
                     distances[neighbor] = new_distance
 
         return distances
+
+    
+    def a_star(self, start, goal, heuristic=None):
+        if start not in self.adjacency:
+            raise ValueError(f"Unknown vertex: {start}")
+
+        if goal not in self.adjacency:
+            raise ValueError(f"Unknown vertex: {goal}")
+
+        if heuristic is None:
+            heuristic = lambda vertex, target: 0
+
+        distances = {
+            vertex: inf
+            for vertex in self.adjacency
+        }
+        distances[start] = 0
+
+        previous = {start: None}
+        counter = count()
+
+        priority_queue = [
+            (heuristic(start, goal), 0, next(counter), start)
+        ]
+
+        while priority_queue:
+            _, current_distance, _, current = heapq.heappop(
+                priority_queue
+            )
+
+            if current_distance > distances[current]:
+                continue
+
+            if current == goal:
+                path = []
+                vertex = goal
+
+                while vertex is not None:
+                    path.append(vertex)
+                    vertex = previous[vertex]
+
+                path.reverse()
+                return path, current_distance
+
+            for neighbor, weight in self.adjacency[current].items():
+                new_distance = current_distance + weight
+
+                if new_distance < distances[neighbor]:
+                    distances[neighbor] = new_distance
+                    previous[neighbor] = current
+
+                    estimated_total = (
+                        new_distance + heuristic(neighbor, goal)
+                    )
+
+                    heapq.heappush(
+                        priority_queue,
+                        (
+                            estimated_total,
+                            new_distance,
+                            next(counter),
+                            neighbor,
+                        ),
+                    )
+
+        return [], inf
+
+
+
+        
