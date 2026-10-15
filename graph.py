@@ -10,9 +10,11 @@ class Graph:
         self.directed = directed
         self.adjacency = {}
 
+
     def add_vertex(self, vertex):
         if vertex not in self.adjacency:
             self.adjacency[vertex] = {}
+
 
     def add_edge(self, source, target, weight=1):
         if weight < 0:
@@ -26,18 +28,31 @@ class Graph:
         if not self.directed:
             self.adjacency[target][source] = weight
 
+
     def get_vertices(self):
         return list(self.adjacency)
 
+    
     def get_edges(self):
         edges = []
+        seen = set()
 
         for source, neighbors in self.adjacency.items():
             for target, weight in neighbors.items():
-                if self.directed or (target, source) not in edges:
-                    edges.append((source, target, weight))
+                key = (
+                    (source, target)
+                    if self.directed
+                    else frozenset((source, target))
+                )
+
+                if key in seen:
+                    continue
+
+                seen.add(key)
+                edges.append((source, target, weight))
 
         return edges
+    
 
     def bfs(self, start):
         if start not in self.adjacency:
@@ -58,6 +73,7 @@ class Graph:
 
         return order
 
+
     def dfs(self, start):
         if start not in self.adjacency:
             raise ValueError(f"Unknown vertex: {start}")
@@ -75,6 +91,7 @@ class Graph:
 
         visit(start)
         return order
+
 
     def dijkstra(self, start):
         if start not in self.adjacency:
