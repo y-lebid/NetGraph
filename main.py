@@ -1,8 +1,8 @@
-
 from network import get_network_info, get_network
 from discovery import discover_devices
 from sample_graph import create_sample_graph
 from terminal_graph import draw_graph
+from network_graph import create_network_graph
 
 
 def print_header():
@@ -38,6 +38,18 @@ def analyze_network():
                 f"Device         {device['ip']:<16} "
                 f"MAC: {mac}"
             )
+            
+            graph = create_network_graph(
+            devices,
+            network_info["local_ip"],
+            network_info["gateway"],
+        )
+
+        print("\n[+] Network graph created.")
+        print(f"    Vertices: {len(graph.get_vertices())}")
+        print(f"    Edges:    {len(graph.get_edges())}")
+
+        graph_menu(graph)
 
     except (OSError, RuntimeError, ValueError, KeyError) as error:
         print(f"\n[!] Network analysis failed: {error}")
