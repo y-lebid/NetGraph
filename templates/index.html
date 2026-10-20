@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="uk" class="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetGraph — Terminal Network Analyzer</title>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;0,800;1,400&display=swap" rel="stylesheet">
+
+  
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body class="term-body">
+
+  <main class="term-container">
+
+    
+    <header class="term-header">
+      <div class="header-left">
+        <a href="/" class="term-brand">
+          <span class="prompt-sym">$</span> netgraph<span class="term-dim">--topology-v2</span>
+        </a>
+        <span class="term-badge">[ MODE: LOCAL_NET ]</span>
+      </div>
+
+      <div class="header-right">
+        <span class="term-stat"><span class="term-dim">SYS_STATUS:</span> <strong id="header-status">IDLE</strong></span>
+        <span class="term-stat"><span class="term-dim">SEC_LEVEL:</span> <strong>HIGH</strong></span>
+        <span class="term-stat"><span class="term-dim">NODES:</span> <strong id="header-node-count">0</strong></span>
+      </div>
+    </header>
+
+    
+    <section class="term-card intro-card">
+      <div class="intro-content">
+        <div class="term-prompt-line">
+          <span class="prompt-user">root@netgraph</span>:<span class="prompt-path">~/scanner</span># <span class="blink-cursor">_</span>
+        </div>
+        <h1 class="term-title">NET_GRAPH // TOPOLOGY_ANALYZER</h1>
+        <p class="term-subtitle">
+          [+] Сканування локальної підмережі, побудова векторної топології та алгоритмічний аналіз маршрутів.
+        </p>
+      </div>
+
+      <div class="intro-actions">
+        <button id="scan-button" class="term-btn term-btn-lg">
+          [ EXECUTE SCAN ]
+        </button>
+        <p id="scan-status" class="term-status-text" aria-live="polite">
+          > System ready. Press button to scan network...
+        </p>
+      </div>
+    </section>
+
+    <section class="term-metrics-grid" aria-label="Мережеві метрики">
+      <article class="term-card metric-box">
+        <span class="metric-label">[ LOCAL_IP ]</span>
+        <strong id="local-ip" class="metric-value">—</strong>
+      </article>
+
+      <article class="term-card metric-box">
+        <span class="metric-label">[ SUBNET ]</span>
+        <strong id="subnet" class="metric-value">—</strong>
+      </article>
+
+      <article class="term-card metric-box">
+        <span class="metric-label">[ GATEWAY ]</span>
+        <strong id="gateway" class="metric-value">—</strong>
+      </article>
+
+      <article class="term-card metric-box">
+        <span class="metric-label">[ ACTIVE_DEVICES ]</span>
+        <strong id="device-count" class="metric-value">0</strong>
+      </article>
+    </section>
+
+    <section class="term-workspace">
+      
+      
+      <article class="term-card map-panel">
+        <div class="panel-header">
+          <div>
+            <span class="panel-tag">/// TOPOLOGY_MAP</span>
+            <h2 class="panel-title">МЕРЕЖЕВА СХЕМА</h2>
+          </div>
+          <span id="vertex-count" class="term-badge">[ 0 VERTICES ]</span>
+        </div>
+
+        
+        <div id="graph-canvas" class="canvas-wrapper">
+          
+        </div>
+
+        
+        <div class="map-legend">
+          <span class="legend-item"><span class="shape-icon icon-self">◆</span> Мій пристрій (Target)</span>
+          <span class="legend-item"><span class="shape-icon icon-router">■</span> Шлюз (Router)</span>
+          <span class="legend-item"><span class="shape-icon icon-device">●</span> Вузол мережі</span>
+        </div>
+      </article>
+
+      
+      <article class="term-card devices-panel">
+        <div class="panel-header">
+          <div>
+            <span class="panel-tag">/// DISCOVERED_NODES</span>
+            <h2 class="panel-title">СПИСОК ПРИСТРОЇВ</h2>
+          </div>
+        </div>
+
+        <div id="device-list" class="device-list-container">
+          <div class="term-empty-state">
+            [!] Результати сканування з'являться після запуску.
+          </div>
+        </div>
+
+        <div class="panel-footer-note">
+          * Клацніть вузол для виділення в топології
+        </div>
+      </article>
+
+    </section>
+
+    <section class="term-card algorithms-section">
+      <div class="panel-header">
+        <div>
+          <span class="panel-tag">/// ROUTING_ALGORITHMS</span>
+          <h2 class="panel-title">ОБХІД ТА ПОШУК ШЛЯХУ В ГРАФІ</h2>
+        </div>
+        <div class="term-badge">
+          GRAPH_NODES: <b id="algorithm-count">0</b>
+        </div>
+      </div>
+
+      
+      <div class="algo-controls">
+        <div class="control-group">
+          <label for="start-node" class="control-label">> START_NODE:</label>
+          <select id="start-node" disabled class="term-select">
+            <option>Виконайте сканування...</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="goal-node" class="control-label">> TARGET_NODE:</label>
+          <select id="goal-node" disabled class="term-select">
+            <option>Виконайте сканування...</option>
+          </select>
+        </div>
+
+        <div class="algo-buttons">
+          <button data-algorithm="bfs" disabled class="term-btn term-btn-sm">[ RUN BFS ]</button>
+          <button data-algorithm="dfs" disabled class="term-btn term-btn-sm">[ RUN DFS ]</button>
+          <button data-algorithm="dijkstra" disabled class="term-btn term-btn-sm">[ DIJKSTRA ]</button>
+          <button data-algorithm="a-star" disabled class="term-btn term-btn-sm">[ A* SEARCH ]</button>
+        </div>
+      </div>
+
+      
+      <div class="console-output-box">
+        <div class="console-header">
+          <span>STDOUT // EXECUTION_LOG</span>
+          <span class="term-dim">FORMAT: JSON</span>
+        </div>
+        <pre id="algorithm-result" class="term-console" aria-live="polite">System idle. Awaiting user algorithm command...</pre>
+      </div>
+    </section>
+
+  </main>
+
+  
+  <footer class="term-footer">
+    NETGRAPH_CLI v2.4.0 // PERMISSION_REQUIRED_FOR_UNAUTHORIZED_NETWORKS
+  </footer>
+
+  
+  <script src="/static/js/app.js" defer></script>
+</body>
+</html>

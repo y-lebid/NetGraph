@@ -1,166 +1,100 @@
 # NetGraph
 
-**NetGraph** is a Python-based local network analyzer and graph algorithms laboratory.
+NetGraph is a local network analyzer and graph algorithms project. It detects the computer's network configuration, discovers responding devices on the local IPv4 subnet, and presents the results as a graph. The project includes both a browser interface and an interactive command-line interface.
 
-The project is designed to analyze the local network of the computer on which it is running and represent the discovered network as a graph. It also provides a practical environment for applying graph and data structure algorithms.
+## Current features
 
-> **Project status:** In development
+- Detects the local IPv4 address, network interface, default gateway, and subnet information where supported by the operating system.
+- Scans the detected private IPv4 subnet using ICMP ping and supplements results with the system ARP table.
+- Limits web scans to the detected private subnet and rejects subnets larger than 4094 usable hosts.
+- Builds an undirected weighted graph from discovered device addresses, the local address, and the gateway. The current live-network graph connects the local address to the gateway; it does not infer links between other devices.
+- Implements breadth-first search (BFS), depth-first search (DFS), Dijkstra's shortest-path distances, and A* path search.
+- Shows graph statistics and a terminal graph view in the CLI.
+- Provides a FastAPI web panel for scanning, viewing devices and the graph, and running graph algorithms. The web interface supports selecting nodes and visualizing the graph.
+- Includes a fixed sample graph for trying the graph algorithms without scanning a network.
+- Includes unit tests written with Python's `unittest` framework.
 
-## Features
+## Requirements
 
-### Currently implemented
+- Python 3.10 or newer
+- Windows or Linux
+- For the web panel: FastAPI, Uvicorn, and Jinja2 (listed in `requirements.txt`)
+- Network scanning depends on the operating system's `ping` and ARP/neighbour-table utilities.
 
-- Detect local IP address
-- Detect active network interface
-- Detect default gateway
-- Display basic local network information
+## Setup
 
-### Planned
+Create and activate a virtual environment, then install the dependencies:
 
-- Detect local subnet
-- Discover devices on the local network
-- Represent network devices as a graph
-- Add and remove devices and connections
-- Search for devices
-- BFS traversal
-- DFS traversal
-- Dijkstra shortest-path algorithm
-- Network statistics
-- Sample network datasets
-- Generated test networks
-- CLI interface
+### Windows PowerShell
 
-## How It Works
-
-NetGraph uses the network configuration of the computer running the program.
-
-```text
-┌──────────────────────┐
-│       NetGraph       │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│ Local Network Config │
-└──────────┬───────────┘
-           │
-     ┌─────┼─────┐
-     ▼     ▼     ▼
-    IP   Interface Gateway
-     │
-     ▼
-┌──────────────────────┐
-│   Local Network      │
-│      Discovery       │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│    Network Graph     │
-└──────────┬───────────┘
-           │
-      ┌────┼────┐
-      ▼    ▼    ▼
-     BFS  DFS  Dijkstra
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ```
 
-The project does **not** require the user to enter an arbitrary external IP address. Its primary purpose is analyzing the local network of the machine where NetGraph is running.
-
-## Technologies
-
-- Python 3
-- Linux networking utilities
-- Graph data structures
-- Breadth-First Search (BFS)
-- Depth-First Search (DFS)
-- Dijkstra's algorithm
-- Hash tables
-- Searching and sorting algorithms
-
-## Project Structure
-
-```text
-NetGraph/
-├── main.py
-├── network.py
-├── README.md
-└── .gitignore
-```
-
-The structure will evolve as new features are implemented.
-
-## Installation
-
-Clone the repository:
-
-```bash
-git clone <repository-url>
-cd NetGraph
-```
-
-Create a virtual environment:
+### Linux
 
 ```bash
 python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Activate it:
+## Run the web application
 
 ```bash
-source .venv/bin/activate
+python web_app.py
 ```
 
-Run the application:
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The server binds to the loopback interface. API requests from non-loopback clients are rejected. A scan runs in a background worker; start it from the web page and wait for the results to appear.
+
+The application scans only the automatically detected private IPv4 subnet. It does not accept a user-provided scan range. A subnet with more than 4094 usable hosts is rejected.
+
+## Run the CLI
 
 ```bash
 python main.py
 ```
 
-## Example
+The CLI can analyze the local network or load the built-in sample graph. Its “Generate test network” menu option currently loads the same fixed sample graph; it does not generate a random graph.
 
-Currently NetGraph displays basic network information:
+## Run the tests
 
-```text
-╔══════════════════════════╗
-║         NetGraph         ║
-║  Local Network Analyzer  ║
-╚══════════════════════════╝
-
-Local IP Address: 192.168.0.000
-Network Interface: enp4s0
-Default Gateway: 192.168.0.0
+```bash
+python -m unittest discover -s tests -v
 ```
 
-## Design Document
-
-The detailed project design and architecture are available in the project design document:
-
-**[Read the Design Document](https://docs.google.com/document/d/15bUXavpJfSmnrsn5froGI-F037A09icnTEvuxfHQL1Q/edit?usp=sharing)**
-
-## Educational Purpose
-
-NetGraph was created as a practical Python project for studying and applying algorithms and data structures.
-
-The project combines theoretical concepts with a real-world networking problem:
+## Project structure
 
 ```text
-Data Structures
-       +
-Graph Algorithms
-       +
-Linux Networking
-       ↓
-     NetGraph
+NetGraph/
+├── discovery.py          # ICMP scanning and ARP table parsing
+├── graph.py              # Graph data structure and graph algorithms
+├── main.py               # Interactive CLI
+├── network.py            # Local network configuration and subnet detection
+├── network_graph.py      # Builds a graph from discovered devices
+├── sample_graph.py       # Fixed sample graph
+├── terminal_graph.py     # Text-based graph renderer for the CLI
+├── web_app.py            # FastAPI application and API routes
+├── templates/
+│   └── index.html        # Web interface template
+├── static/
+│   ├── css/style.css     # Web interface styles
+│   └── js/app.js         # Web interface behavior
+├── tests/                # unittest test modules
+├── requirements.txt
+└── README.md
 ```
 
-The project will demonstrate how algorithms such as BFS, DFS, and Dijkstra can be applied to a network represented as a graph.
+## Known limitations
+
+- On Linux, `network.py` currently falls back to a `/24` subnet because the Linux network configuration code does not retrieve the interface subnet mask.
+- Device discovery relies on ping responses and the local ARP/neighbour table. Devices that do not respond to ping and are absent from that table may not appear.
+- The live graph currently represents discovered devices as vertices and adds a local-computer-to-gateway edge. It does not discover the physical or logical links between all devices.
+- Graph vertex and edge add operations are available in the graph implementation; dedicated remove operations and an independently generated random test graph are not currently implemented.
+- The shortest-path algorithms operate on the graph's edge weights. Live network edges currently use a weight of 1, so these results describe graph cost rather than measured network latency.
 
 ## Scope
 
-NetGraph is intended for analyzing networks that the user owns or is authorized to analyze.
-
-The project is focused on local network analysis rather than scanning arbitrary external systems.
-
-## License
-
-This project is currently intended as an educational project.
+NetGraph is intended for educational analysis of a local network that the user owns or is authorized to inspect. Scanning is restricted to the automatically detected private subnet.
