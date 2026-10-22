@@ -1,29 +1,31 @@
 # NetGraph
 
-NetGraph is a local network analyzer and graph algorithms project. It detects the computer's network configuration, discovers responding devices on the local IPv4 subnet, and presents the results as a graph. The project includes both a browser interface and an interactive command-line interface.
+NetGraph discovers devices on the computer's local IPv4 network and displays them as a graph. It includes a browser-based interface and an interactive terminal interface, with graph traversal and path-finding algorithms.
 
-## Current features
+## Design document
 
-- Detects the local IPv4 address, network interface, default gateway, and subnet information where supported by the operating system.
-- Scans the detected private IPv4 subnet using ICMP ping and supplements results with the system ARP table.
-- Limits web scans to the detected private subnet and rejects subnets larger than 4094 usable hosts.
-- Builds an undirected weighted graph from discovered device addresses, the local address, and the gateway. The current live-network graph connects the local address to the gateway; it does not infer links between other devices.
-- Implements breadth-first search (BFS), depth-first search (DFS), Dijkstra's shortest-path distances, and A* path search.
-- Shows graph statistics and a terminal graph view in the CLI.
-- Provides a FastAPI web panel for scanning, viewing devices and the graph, and running graph algorithms. The web interface supports selecting nodes and visualizing the graph.
-- Includes a fixed sample graph for trying the graph algorithms without scanning a network.
-- Includes unit tests written with Python's `unittest` framework.
+[Design Document - NetGraph](https://docs.google.com/document/d/15bUXavpJfSmnrsn5froGI-F037A09icnTEvuxfHQL1Q/edit?usp=sharing)
+
+## Features
+
+- Detects the local IPv4 address, network interface, subnet, and default gateway on Windows and Linux.
+- Finds responding devices using ICMP ping and the operating system's ARP or neighbour table.
+- Builds a weighted graph from discovered devices. The gateway is used as a hub; the application does not infer actual device-to-device links.
+- Runs breadth-first search (BFS), depth-first search (DFS), Dijkstra's shortest-distance algorithm, and A* path search.
+- Provides device search and sorting in the terminal and web interfaces.
+- The terminal interface can render the graph and show network statistics.
+- The web interface displays and highlights graph results, and lets you choose start and goal nodes.
 
 ## Requirements
 
 - Python 3.10 or newer
 - Windows or Linux
-- For the web panel: FastAPI, Uvicorn, and Jinja2 (listed in `requirements.txt`)
-- Network scanning depends on the operating system's `ping` and ARP/neighbour-table utilities.
+- Web interface dependencies from `requirements.txt` (FastAPI, Uvicorn, and Jinja2)
+- Network scanning utilities available on the operating system: `ping` and ARP/neighbour-table access
 
-## Setup
+## Installation
 
-Create and activate a virtual environment, then install the dependencies:
+From the project directory, create and activate a virtual environment, then install the dependencies.
 
 ### Windows PowerShell
 
@@ -41,23 +43,33 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Run the web application
+## Run the web interface
 
 ```bash
 python web_app.py
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The server binds to the loopback interface. API requests from non-loopback clients are rejected. A scan runs in a background worker; start it from the web page and wait for the results to appear.
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000), start a scan, then select graph nodes and run an algorithm. The server binds to the local computer; API requests from non-loopback clients are rejected.
 
-The application scans only the automatically detected private IPv4 subnet. It does not accept a user-provided scan range. A subnet with more than 4094 usable hosts is rejected.
-
-## Run the CLI
+## Run the terminal interface
 
 ```bash
 python main.py
 ```
 
-The CLI can analyze the local network or load the built-in sample graph. Its “Generate test network” menu option currently loads the same fixed sample graph; it does not generate a random graph.
+Choose **Analyze my network** and follow the prompts to inspect the graph, run an algorithm, or search and sort the discovered devices.
+
+## Search and sorting
+
+Both interfaces can search by IP address, MAC address, name, or device type. The web interface also searches vendor and displayed device role where available. Devices can be sorted by IP, name, type, or MAC address.
+
+## Network scope and limitations
+
+- Scanning is limited to the automatically detected private IPv4 subnet; the application does not accept a manually entered range.
+- Scans are rejected when the subnet contains more than 4094 usable hosts.
+- Devices that do not respond to ping and are absent from the local ARP/neighbour table may not be discovered.
+- The graph represents discovered devices and a gateway-centred topology. It does not map physical links or measure network latency. Live graph edges use a weight of 1, so path costs describe the graph model rather than real latency.
+- Use the scanner only on a network you own or are authorized to inspect.
 
 ## Run the tests
 
@@ -65,36 +77,26 @@ The CLI can analyze the local network or load the built-in sample graph. Its “
 python -m unittest discover -s tests -v
 ```
 
-## Project structure
+## Project layout
 
 ```text
 NetGraph/
-├── discovery.py          # ICMP scanning and ARP table parsing
-├── graph.py              # Graph data structure and graph algorithms
-├── main.py               # Interactive CLI
-├── network.py            # Local network configuration and subnet detection
-├── network_graph.py      # Builds a graph from discovered devices
-├── sample_graph.py       # Fixed sample graph
-├── terminal_graph.py     # Text-based graph renderer for the CLI
-├── web_app.py            # FastAPI application and API routes
-├── templates/
-│   └── index.html        # Web interface template
-├── static/
-│   ├── css/style.css     # Web interface styles
-│   └── js/app.js         # Web interface behavior
-├── tests/                # unittest test modules
-├── requirements.txt
-└── README.md
+|-- discovery.py          # Device discovery and ARP/neighbour parsing
+|-- graph.py              # Graph data structure and algorithms
+|-- main.py               # Interactive terminal interface
+|-- models.py             # Shared device and connection models
+|-- network.py            # Local network configuration
+|-- network_graph.py      # Builds a graph from discovered devices
+|-- search.py             # Device search helpers
+|-- sorting.py            # Device sorting helpers
+|-- terminal_graph.py     # Terminal graph renderer
+|-- web_app.py            # FastAPI application
+|-- templates/
+|   `-- index.html         # Web interface template
+|-- static/
+|   |-- css/style.css      # Web interface styles
+|   `-- js/app.js          # Web interface behavior
+|-- tests/                 # unittest suite
+|-- requirements.txt
+`-- README.md
 ```
-
-## Known limitations
-
-- On Linux, `network.py` currently falls back to a `/24` subnet because the Linux network configuration code does not retrieve the interface subnet mask.
-- Device discovery relies on ping responses and the local ARP/neighbour table. Devices that do not respond to ping and are absent from that table may not appear.
-- The live graph currently represents discovered devices as vertices and adds a local-computer-to-gateway edge. It does not discover the physical or logical links between all devices.
-- Graph vertex and edge add operations are available in the graph implementation; dedicated remove operations and an independently generated random test graph are not currently implemented.
-- The shortest-path algorithms operate on the graph's edge weights. Live network edges currently use a weight of 1, so these results describe graph cost rather than measured network latency.
-
-## Scope
-
-NetGraph is intended for educational analysis of a local network that the user owns or is authorized to inspect. Scanning is restricted to the automatically detected private subnet.

@@ -1,6 +1,31 @@
+# Python virtual environments
 .venv/
+venv/
+ENV/
+
+# Python bytecode and tool caches
 __pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Test and runtime output
+/test log/
+/test_logs/
+*.log
+.coverage
+htmlcov/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
 .vscode/
 .idea/
-.env
-.gitattributes
+.DS_Store
+Thumbs.db
+Desktop.ini

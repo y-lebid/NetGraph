@@ -19,7 +19,6 @@ class TestPingHost(unittest.TestCase):
         result = ping_host("192.168.0.1")
 
         self.assertTrue(result)
-        print("  [OK] Ping успішного пристрою")
 
     @patch("discovery.platform.system", return_value="Windows")
     @patch("discovery.subprocess.run")
@@ -29,7 +28,6 @@ class TestPingHost(unittest.TestCase):
         result = ping_host("192.168.0.100")
 
         self.assertFalse(result)
-        print("  [OK] Обробка пристрою без відповіді")
 
 
 class TestArpParser(unittest.TestCase):
@@ -49,14 +47,19 @@ Interface: 192.168.0.233 --- 0x8
         self.assertEqual(result[0]["ip"], "192.168.0.1")
         self.assertEqual(result[0]["mac"], "aa-bb-cc-dd-ee-ff")
 
-        print("  [OK] Парсинг ARP-таблиці")
 
     def test_parse_empty_arp_table(self):
         result = parse_arp_table("")
 
         self.assertEqual(result, [])
 
-        print("  [OK] Обробка порожньої ARP-таблиці")
+
+    def test_rejects_subnet_above_scan_limit(self):
+        import ipaddress
+        from discovery import discover_devices
+
+        with self.assertRaises(ValueError):
+            discover_devices(ipaddress.ip_network("10.0.0.0/16"))
 
 
 if __name__ == "__main__":

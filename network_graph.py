@@ -1,4 +1,5 @@
 from graph import Graph
+from models import Connection
 
 
 def create_network_graph(devices, local_ip, gateway):
@@ -6,7 +7,6 @@ def create_network_graph(devices, local_ip, gateway):
 
     for device in devices:
         ip_address = device.get("ip")
-
         if ip_address:
             graph.add_vertex(ip_address)
 
@@ -15,8 +15,18 @@ def create_network_graph(devices, local_ip, gateway):
 
     if gateway:
         graph.add_vertex(gateway)
-        
-    if local_ip and gateway and local_ip != gateway:
-        graph.add_edge(local_ip, gateway, weight=1)
+
+    def connect(source, destination):
+        edge = Connection(source, destination, weight=1)
+        graph.add_edge(edge.source, edge.destination, weight=edge.weight)
+
+    if gateway:
+        # The local-network view uses the gateway as an illustrative hub.
+        for device in devices:
+            ip_address = device.get("ip")
+            if ip_address and ip_address != gateway:
+                connect(gateway, ip_address)
+        if local_ip and local_ip != gateway:
+            connect(gateway, local_ip)
 
     return graph

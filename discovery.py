@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 MAX_WORKERS = 32
+MAX_SCAN_HOSTS = 4094
 
 MAC_PATTERN = re.compile(
     r"^(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}$"
@@ -136,6 +137,11 @@ def discover_devices(network):
     if not isinstance(network, ipaddress.IPv4Network):
         raise ValueError("An IPv4 network is required")
 
+    if network.num_addresses - 2 > MAX_SCAN_HOSTS:
+        raise ValueError(
+            f"Detected subnet {network} is too large for a local scan "
+            f"(limit: {MAX_SCAN_HOSTS} hosts)."
+        )
     hosts = list(network.hosts())
     devices = {}
     total = len(hosts)

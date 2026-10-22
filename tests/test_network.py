@@ -32,7 +32,6 @@ class TestNetwork(unittest.TestCase):
         self.assertIsInstance(info["gateway"], str)
         self.assertIsInstance(info["interface"], str)
 
-        print("  [OK] Визначення мережевих параметрів")
 
     def test_get_network_returns_expected_subnet_and_ip_network_type(self):
         network_info = {
@@ -51,7 +50,6 @@ class TestNetwork(unittest.TestCase):
         )
         self.assertIsInstance(subnet, ipaddress.IPv4Network)
 
-        print("  [OK] Розрахунок адреси підмережі")
 
     def test_get_network_uses_default_slash_24_without_subnet_mask(self):
         network_info = {
@@ -68,7 +66,6 @@ class TestNetwork(unittest.TestCase):
             ipaddress.ip_network("10.0.0.0/24"),
         )
 
-        print("  [OK] Використання підмережі /24 за замовчуванням")
 
 
 if __name__ == "__main__":

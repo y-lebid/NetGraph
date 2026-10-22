@@ -1,9 +1,30 @@
+
+const translations = {
+ en: {title:'NetGraph — Terminal Network Analyzer',subtitle:'[+] Scan the local subnet, build a network topology, and analyze routes with graph algorithms.',execute:'[ EXECUTE SCAN ]',ready:'> System ready. Press button to scan network...',map:'NETWORK TOPOLOGY',devices:'DEVICE LIST',algorithms:'GRAPH TRAVERSAL AND PATHFINDING',self:'My device (Target)',gateway:'Gateway (Router)',node:'Network node',clickHint:'* Click a node to highlight it in the topology',start:'> START_NODE:',goal:'> TARGET_NODE:',waiting:'System idle. Awaiting user algorithm command...',footer:'NETGRAPH // LOCAL NETWORK ANALYZER',targetPc:'[TARGET_PC]',gatewayTag:'[GATEWAY]',activeNode:'[ACTIVE_NODE]',bfs:'[ RUN BFS ]',dfs:'[ RUN DFS ]',dijkstra:'[ DIJKSTRA ]',astar:'[ A* SEARCH ]'},
+ uk: {title:'NetGraph — аналізатор локальної мережі',subtitle:'[+] Сканування локальної підмережі, побудова топології та аналіз маршрутів графовими алгоритмами.',execute:'[ ЗАПУСТИТИ СКАНУВАННЯ ]',ready:'> Система готова. Натисніть кнопку, щоб просканувати мережу...',map:'ТОПОЛОГІЯ МЕРЕЖІ',devices:'СПИСОК ПРИСТРОЇВ',algorithms:'ОБХІД ГРАФА ТА ПОШУК ШЛЯХУ',self:'Мій пристрій (ціль)',gateway:'Шлюз (маршрутизатор)',node:'Вузол мережі',clickHint:'* Натисніть вузол, щоб виділити його на схемі',start:'> ПОЧАТКОВИЙ ВУЗОЛ:',goal:'> ЦІЛЬОВИЙ ВУЗОЛ:',waiting:'Система очікує на запуск алгоритму...',footer:'NETGRAPH // АНАЛІЗАТОР ЛОКАЛЬНОЇ МЕРЕЖІ',targetPc:'[ЦЕЙ_ПК]',gatewayTag:'[ШЛЮЗ]',activeNode:'[АКТИВНИЙ_ВУЗОЛ]',bfs:'[ ЗАПУСТИТИ BFS ]',dfs:'[ ЗАПУСТИТИ DFS ]',dijkstra:'[ ДЕЙКСТРА ]',astar:'[ ПОШУК A*]'}
+};
+let currentLanguage = localStorage.getItem('netgraph-language') || 'uk';
+const tr = key => translations[currentLanguage][key] || translations.en[key] || key;
+function applyLanguage() {
+ const t=translations[currentLanguage]; document.documentElement.lang=currentLanguage; document.title=t.title;
+ const set=(q,k)=>{const e=document.querySelector(q);if(e)e.textContent=t[k];};
+ set('.term-subtitle','subtitle');set('#scan-button','execute');set('.map-panel .panel-title','map');set('.devices-panel .panel-title','devices');set('.algorithms-section .panel-title','algorithms');set('.devices-panel .panel-footer-note','clickHint');set('.control-group:nth-child(1) .control-label','start');set('.control-group:nth-child(2) .control-label','goal');set('.term-footer','footer');set('#algorithm-result','waiting');
+ document.querySelectorAll('.map-legend .legend-item').forEach((e,i)=>e.lastChild.textContent=' '+[t.self,t.gateway,t.node][i]);
+ const enLabels={bfs:'[ RUN BFS ]',dfs:'[ RUN DFS ]',dijkstra:'[ DIJKSTRA ]','a-star':'[ A* SEARCH ]'};
+ const algoKeys={bfs:'bfs',dfs:'dfs',dijkstra:'dijkstra','a-star':'astar'};
+ document.querySelectorAll('[data-algorithm]').forEach(b=>b.textContent=t[algoKeys[b.dataset.algorithm]]);
+ const b=document.querySelector('#language-toggle'); if(b){b.textContent=currentLanguage==='uk'?'EN':'УКР';b.setAttribute('aria-label',currentLanguage==='uk'?'Switch to English':'Перемкнути українською');}
+ const status=document.querySelector('#scan-status');if(status&&scanState==='IDLE')status.textContent=t.ready;
+}
+function toggleLanguage(){currentLanguage=currentLanguage==='uk'?'en':'uk';localStorage.setItem('netgraph-language',currentLanguage);applyLanguage();if(graph.vertices.length)initCanvasGraph();if(scanState==='COMPLETE')renderDevices(window.__ngDevices||[]);}
+document.addEventListener('DOMContentLoaded',applyLanguage);
 const $ = (selector) => document.querySelector(selector);
 
 
 let graph = { vertices: [], edges: [] };
 let network = {};
 let highlightedPath = [];
+let highlightedNodes = [];
 let canvasAnimId = null;
 let nodePositions = new Map();
 let draggedNode = null;
@@ -33,7 +54,9 @@ async function loadNetwork() {
     $("#local-ip").textContent = network.local_ip || "—";
     $("#subnet").textContent = network.subnet || "—";
     $("#gateway").textContent = network.gateway || "NOT_FOUND";
-    $("#scan-status").textContent = `> Interface online. Subnet ${network.subnet || "ready"}.`;
+    $("#scan-status").textContent = currentLanguage === "uk"
+      ? "> Інтерфейс активний. Підмережа " + (network.subnet || "готова") + "."
+      : "> Interface online. Subnet " + (network.subnet || "ready") + ".";
     
     
     initCanvasGraph();
@@ -48,31 +71,62 @@ function escapeHtml(value) {
   })[char]);
 }
 
-function renderDevices(devices) {
-  $("#device-count").textContent = devices.length;
-  $("#header-node-count").textContent = devices.length;
+function renderNewDeviceAlert(devices) {
+  const alert = $("#new-device-alert");
+  if (!alert) return;
+  if (!devices.length) { alert.hidden = true; alert.textContent = ""; return; }
+  const heading = currentLanguage === "uk" ? "Новий пристрій у мережі:" : "New device detected:";
+  alert.innerHTML = `<strong>[!] ${heading}</strong> ${devices.map(d => escapeHtml(d.ip || d.mac || "unknown")).join(", ")}`;
+  alert.hidden = false;
+}
 
-  const local = network.local_ip;
-  const ordered = [...devices].sort((a, b) => 
-    (a.ip === local ? -1 : b.ip === local ? 1 : a.ip.localeCompare(b.ip, undefined, { numeric: true }))
+function renderDevices(devices) {
+  window.__ngDevices = devices;
+  const query = ($("#device-search")?.value || "").trim().normalize("NFKC").toLocaleLowerCase();
+  const sortBy = $("#device-sort")?.value || "ip";
+  const roleOf = (device) => device.ip === network.local_ip
+    ? tr("targetPc")
+    : device.ip === network.gateway
+      ? tr("gatewayTag")
+      : tr("activeNode");
+  const searchableFields = (device) => [
+    device.ip, device.mac, device.name, device.hostname, device.vendor,
+    device.type, device.kind, device.device_type, roleOf(device)
+  ];
+  const filtered = devices.filter(device =>
+    searchableFields(device).some(value =>
+      String(value || "").normalize("NFKC").toLocaleLowerCase().includes(query)
+    )
   );
+  const fieldValue = (device) => sortBy === "type"
+    ? (device.device_type || device.type || device.kind || "")
+    : (device[sortBy] || "");
+  const ordered = [...filtered].sort((a, b) => {
+    const left = String(fieldValue(a));
+    const right = String(fieldValue(b));
+    if (sortBy === "ip") return left.localeCompare(right, undefined, { numeric: true });
+    return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
+  });
+  const local = network.local_ip;
+  $("#device-count").textContent = ordered.length;
+  $("#header-node-count").textContent = graph.vertices.length || devices.length;
 
   $("#device-list").innerHTML = ordered.length ? ordered.map((device) => {
     const isSelf = device.ip === local;
     const isRouter = device.ip === network.gateway;
-    const tag = isSelf ? "[TARGET_PC]" : isRouter ? "[GATEWAY]" : "[ACTIVE_NODE]";
+    const tag = isSelf ? tr("targetPc") : isRouter ? tr("gatewayTag") : tr("activeNode");
 
     return `
       <div class="device-row-term" onclick="focusNode('${device.ip}')">
         <div>
           <span class="dev-ip">${escapeHtml(device.ip)}</span>
-          <span class="dev-type">${tag} ${device.name ? `· ${escapeHtml(device.name)}` : ''}</span>
+          <span class="dev-type">${tag} ${escapeHtml(device.name || device.device_type || "")}</span>
         </div>
         <div class="text-right">
           <span class="dev-mac">${device.mac ? escapeHtml(device.mac) : "MAC: N/A"}</span>
         </div>
       </div>`;
-  }).join("") : '<div class="term-empty-state">[!] No active nodes detected in subnet.</div>';
+  }).join("") : '<div class="term-empty-state">[!] No matching devices.</div>';
 }
 
 function enableAlgorithms() {
@@ -83,10 +137,12 @@ function enableAlgorithms() {
 
   const hasVertices = graph.vertices.length > 0;
   start.disabled = goal.disabled = !hasVertices;
+  applyLanguage();
   
   document.querySelectorAll("[data-algorithm]").forEach((button) => button.disabled = !hasVertices);
   $("#algorithm-count").textContent = graph.vertices.length;
   $("#vertex-count").textContent = `[ ${graph.vertices.length} VERTICES ]`;
+  $("#edge-count").textContent = graph.edges.length;
 }
 
 function calculateStructuredLayout(width, height) {
@@ -294,7 +350,7 @@ function initCanvasGraph() {
     nodePositions.forEach((node) => {
       const isSelf = node.id === network.local_ip;
       const isRouter = node.id === network.gateway;
-      const isInPath = highlightedPath.includes(node.id);
+      const isInPath = highlightedPath.includes(node.id) || highlightedNodes.includes(node.id);
 
       const size = 12;
 
@@ -427,6 +483,7 @@ function isEdgeInPath(u, v) {
 }
 
 function focusNode(ip) {
+  highlightedNodes = [];
   highlightedPath = [ip];
   triggerPathAnimation();
 }
@@ -455,6 +512,7 @@ async function refreshScan() {
   graph = await api("/api/graph");
   
   renderDevices(result.devices);
+  renderNewDeviceAlert(result.new_devices || []);
   enableAlgorithms();
   initCanvasGraph();
 
@@ -462,9 +520,14 @@ async function refreshScan() {
   $("#header-status").textContent = "ACTIVE";
 }
 
+$("#device-search").addEventListener("input", () => renderDevices(window.__ngDevices || []));
+$("#device-sort").addEventListener("change", () => renderDevices(window.__ngDevices || []));
+
 $("#scan-button").addEventListener("click", async () => {
   const button = $("#scan-button");
   button.disabled = true;
+  highlightedPath = [];
+  highlightedNodes = [];
   scanState = "SCANNING";
   scanProgress = 10;
   
@@ -473,6 +536,10 @@ $("#scan-button").addEventListener("click", async () => {
   initCanvasGraph();
 
   try {
+    network = await api("/api/network");
+    $("#local-ip").textContent = network.local_ip || "N/A";
+    $("#subnet").textContent = network.subnet || "N/A";
+    $("#gateway").textContent = network.gateway || "NOT_FOUND";
     await api("/api/scan", { method: "POST", body: "{}" });
     await refreshScan();
   } catch (error) {
@@ -484,30 +551,88 @@ $("#scan-button").addEventListener("click", async () => {
   }
 });
 
+function renderAlgorithmResult(algorithm, result) {
+  const output = $("#algorithm-result");
+  const escape = escapeHtml;
+  highlightedPath = [];
+  highlightedNodes = [];
+
+  if (algorithm === "bfs" || algorithm === "dfs") {
+    const order = result.order || [];
+    highlightedNodes = order;
+    const items = order.map((node, index) =>
+      `<li><span class="algo-step-index">${String(index + 1).padStart(2, "0")}</span><code>${escape(node)}</code></li>`
+    ).join("");
+    output.innerHTML = `
+      <section class="algo-result-card">
+        <header class="algo-result-heading">
+          <span>${algorithm === "bfs" ? "Breadth-first traversal" : "Depth-first traversal"}</span>
+          <strong>${order.length} nodes</strong>
+        </header>
+        <ol class="algo-sequence">${items}</ol>
+      </section>`;
+  } else if (algorithm === "dijkstra") {
+    const distances = Object.entries(result.distances || {})
+      .sort((a, b) => (a[1] ?? Infinity) - (b[1] ?? Infinity));
+    const rows = distances.map(([node, distance], index) => `
+      <tr>
+        <td><span class="algo-step-index">${String(index + 1).padStart(2, "0")}</span></td>
+        <th scope="row"><code>${escape(node)}</code></th>
+        <td>${distance === null ? "Unreachable" : escape(distance)}</td>
+      </tr>`).join("");
+    output.innerHTML = `
+      <section class="algo-result-card">
+        <header class="algo-result-heading">
+          <span>Shortest distances</span>
+          <strong>${distances.length} nodes</strong>
+        </header>
+        <table class="algo-distance-table">
+          <thead><tr><th></th><th>Node</th><th>Distance</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </section>`;
+  } else {
+    const path = result.path || [];
+    highlightedPath = path;
+    highlightedNodes = path;
+    const steps = path.map((node, index) => `
+      ${index ? '<span class="algo-route-arrow" aria-hidden="true">→</span>' : ""}
+      <span class="algo-route-step"><small>${String(index + 1).padStart(2, "0")}</small><code>${escape(node)}</code></span>`
+    ).join("");
+    output.innerHTML = `
+      <section class="algo-result-card">
+        <header class="algo-result-heading">
+          <span>${path.length ? "Shortest route" : "No route found"}</span>
+          <strong>${path.length ? `Cost ${escape(result.cost)}` : ""}</strong>
+        </header>
+        ${path.length ? `<div class="algo-route">${steps}</div>` : ""}
+      </section>`;
+  }
+
+  triggerPathAnimation();
+}
+
 document.querySelectorAll("[data-algorithm]").forEach((button) => {
   button.addEventListener("click", async () => {
     const algorithm = button.dataset.algorithm;
-    const payload = { 
+    const payload = {
       start: $("#start-node").value,
-      goal: $("#goal-node").value 
+      goal: $("#goal-node").value
     };
 
-    $("#algorithm-result").textContent = `[ EXECUTING ${algorithm.toUpperCase()} ALGORITHM... ]`;
+    $("#algorithm-result").textContent = `Running ${algorithm.toUpperCase()}...`;
 
     try {
-      const result = await api(`/api/algorithms/${algorithm}`, { 
-        method: "POST", 
-        body: JSON.stringify(payload) 
+      const result = await api(`/api/algorithms/${algorithm}`, {
+        method: "POST",
+        body: JSON.stringify(payload)
       });
 
-      $("#algorithm-result").textContent = JSON.stringify(result, null, 2);
-
-      if (result.path && Array.isArray(result.path)) {
-        highlightedPath = result.path;
-        triggerPathAnimation();
-      }
+      const runtime = document.querySelector(`#runtime-${algorithm}`);
+      if (runtime) runtime.textContent = `${result.runtime_ms.toFixed(3)} ms`;
+      renderAlgorithmResult(algorithm, result);
     } catch (error) {
-      $("#algorithm-result").textContent = `> Algorithm execution error: ${error.message}`;
+      $("#algorithm-result").textContent = `Algorithm error: ${error.message}`;
     }
   });
 });
@@ -518,5 +643,6 @@ window.addEventListener("resize", () => {
 
 
 window.addEventListener("DOMContentLoaded", () => {
+  applyLanguage();
   loadNetwork();
 });
