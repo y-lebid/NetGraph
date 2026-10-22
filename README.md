@@ -4,7 +4,7 @@ NetGraph discovers devices on the computer's local IPv4 network and displays the
 
 ## Design document
 
-[Design Document - NetGraph](https://docs.google.com/document/d/15bUXavpJfSmnrsn5froGI-F037A09icnTEvuxfHQL1Q/edit?usp=sharing)
+[Design Document - NetGraph](https://canva.link/3e6842a4e4ykxtc)
 
 ## Features
 
