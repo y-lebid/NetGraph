@@ -1,0 +1,12 @@
+﻿cff-version: 1.2.0
+message: "If you use this software in a publication, please cite it as below."
+title: "NetGraph"
+authors:
+  - family-names: "Lebid"
+    given-names: "Yehor"
+version: "1.0.0"
+date-released: "2026-10-22"
+url: "https://github.com/y-lebid/NetGraph"
+license: "MIT"
+type: software
+abstract: "Discovers devices on a local IPv4 network, models them as a graph, and provides graph search and path-finding algorithms."

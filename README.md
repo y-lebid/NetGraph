@@ -1,38 +1,33 @@
-# NetGraph
+﻿# NetGraph
 
-NetGraph discovers devices on the computer's local IPv4 network and displays them as a graph. It includes a browser-based interface and an interactive terminal interface, with graph traversal and path-finding algorithms.
-
-## Design document
-
-[Design Document - NetGraph](https://canva.link/3e6842a4e4ykxtc)
+NetGraph discovers responding devices on the computer's detected private IPv4 subnet and displays them as a graph. It offers a browser interface and an interactive terminal interface, with graph traversal and path-finding algorithms.
 
 ## Features
 
-- Detects the local IPv4 address, network interface, subnet, and default gateway on Windows and Linux.
-- Finds responding devices using ICMP ping and the operating system's ARP or neighbour table.
-- Builds a weighted graph from discovered devices. The gateway is used as a hub; the application does not infer actual device-to-device links.
-- Runs breadth-first search (BFS), depth-first search (DFS), Dijkstra's shortest-distance algorithm, and A* path search.
-- Provides device search and sorting in the terminal and web interfaces.
-- The terminal interface can render the graph and show network statistics.
-- The web interface displays and highlights graph results, and lets you choose start and goal nodes.
+- Detects the active IPv4 address, interface, subnet, and default gateway on Windows and Linux.
+- Finds devices that respond to ICMP ping or appear in the local ARP/neighbour table.
+- Builds an undirected, gateway-centred graph. The graph is a model and does not infer physical links between devices.
+- Runs breadth-first search (BFS), depth-first search (DFS), Dijkstra's algorithm, and A*.
+- Searches and sorts discovered devices in the web and terminal interfaces.
+- Shows graph statistics and algorithm results; web algorithm runs produce Markdown benchmark reports in `test log/`.
 
 ## Requirements
 
 - Python 3.10 or newer
 - Windows or Linux
-- Web interface dependencies from `requirements.txt` (FastAPI, Uvicorn, and Jinja2)
-- Network scanning utilities available on the operating system: `ping` and ARP/neighbour-table access
+- `ping` and ARP/neighbour-table utilities provided by the operating system
+- Python packages in `requirements.txt` for the web interface (FastAPI, Uvicorn, Jinja2)
 
 ## Installation
 
-From the project directory, create and activate a virtual environment, then install the dependencies.
+Run these commands from the repository directory.
 
 ### Windows PowerShell
 
 ```powershell
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 ### Linux
@@ -40,7 +35,7 @@ pip install -r requirements.txt
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 ## Run the web interface
@@ -49,7 +44,7 @@ pip install -r requirements.txt
 python web_app.py
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000), start a scan, then select graph nodes and run an algorithm. The server binds to the local computer; API requests from non-loopback clients are rejected.
+Open <http://127.0.0.1:8000>. The server binds to loopback, and API requests are restricted to loopback clients.
 
 ## Run the terminal interface
 
@@ -57,19 +52,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000), start a scan, then select g
 python main.py
 ```
 
-Choose **Analyze my network** and follow the prompts to inspect the graph, run an algorithm, or search and sort the discovered devices.
-
-## Search and sorting
-
-Both interfaces can search by IP address, MAC address, name, or device type. The web interface also searches vendor and displayed device role where available. Devices can be sorted by IP, name, type, or MAC address.
-
-## Network scope and limitations
-
-- Scanning is limited to the automatically detected private IPv4 subnet; the application does not accept a manually entered range.
-- Scans are rejected when the subnet contains more than 4094 usable hosts.
-- Devices that do not respond to ping and are absent from the local ARP/neighbour table may not be discovered.
-- The graph represents discovered devices and a gateway-centred topology. It does not map physical links or measure network latency. Live graph edges use a weight of 1, so path costs describe the graph model rather than real latency.
-- Use the scanner only on a network you own or are authorized to inspect.
+Choose **Analyze my network** and follow the menu prompts.
 
 ## Run the tests
 
@@ -77,26 +60,22 @@ Both interfaces can search by IP address, MAC address, name, or device type. The
 python -m unittest discover -s tests -v
 ```
 
-## Project layout
+## Network scope and limitations
 
-```text
-NetGraph/
-|-- discovery.py
-|-- graph.py
-|-- main.py
-|-- models.py
-|-- network.py
-|-- network_graph.py
-|-- search.py
-|-- sorting.py
-|-- terminal_graph.py
-|-- web_app.py
-|-- templates/
-|   `-- index.html
-|-- static/
-|   |-- css/style.css
-|   `-- js/app.js
-|-- tests/
-|-- requirements.txt
-`-- README.md
-```
+- The scanner uses the automatically detected private IPv4 subnet; it has no manual range option.
+- Subnets with more than 4094 usable hosts are rejected by the web scanner.
+- A host may be missed if it neither responds to ping nor appears in the local ARP/neighbour table.
+- The gateway-centred graph is not a physical topology map. Live edges have weight 1; path costs are graph-model costs, not latency measurements.
+- Network detection depends on `ip` on Linux and PowerShell networking cmdlets on Windows.
+- Scan only networks you own or are authorized to inspect.
+
+## Documentation
+
+- [Architecture and algorithms](docs/architecture.md)
+- [Screenshots](docs/screenshots/README.md)
+- [Changelog](CHANGELOG.md)
+- [Citation metadata](CITATION.cff)
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
