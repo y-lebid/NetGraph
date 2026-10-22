@@ -21,7 +21,6 @@ def create_network_graph(devices, local_ip, gateway):
         graph.add_edge(edge.source, edge.destination, weight=edge.weight)
 
     if gateway:
-        # The local-network view uses the gateway as an illustrative hub.
         for device in devices:
             ip_address = device.get("ip")
             if ip_address and ip_address != gateway:

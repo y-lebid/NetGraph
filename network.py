@@ -55,7 +55,6 @@ def get_linux_network_info():
 
 
 def get_windows_network_info():
-    # PowerShell emits stable property names regardless of Windows display language.
     script = (
         "Get-NetIPConfiguration | "
         "Where-Object { $_.IPv4Address -and $_.NetAdapter.Status -eq 'Up' } | "

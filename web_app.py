@@ -38,7 +38,6 @@ NETWORK_CACHE_SECONDS = 30
 
 
 def _network_snapshot():
-    """Read the OS network configuration once and reuse it briefly."""
     global _network_info, _network, _network_cache_time
     with _network_cache_lock:
         if (

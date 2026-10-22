@@ -81,22 +81,22 @@ python -m unittest discover -s tests -v
 
 ```text
 NetGraph/
-|-- discovery.py          # Device discovery and ARP/neighbour parsing
-|-- graph.py              # Graph data structure and algorithms
-|-- main.py               # Interactive terminal interface
-|-- models.py             # Shared device and connection models
-|-- network.py            # Local network configuration
-|-- network_graph.py      # Builds a graph from discovered devices
-|-- search.py             # Device search helpers
-|-- sorting.py            # Device sorting helpers
-|-- terminal_graph.py     # Terminal graph renderer
-|-- web_app.py            # FastAPI application
+|-- discovery.py
+|-- graph.py
+|-- main.py
+|-- models.py
+|-- network.py
+|-- network_graph.py
+|-- search.py
+|-- sorting.py
+|-- terminal_graph.py
+|-- web_app.py
 |-- templates/
-|   `-- index.html         # Web interface template
+|   `-- index.html
 |-- static/
-|   |-- css/style.css      # Web interface styles
-|   `-- js/app.js          # Web interface behavior
-|-- tests/                 # unittest suite
+|   |-- css/style.css
+|   `-- js/app.js
+|-- tests/
 |-- requirements.txt
 `-- README.md
 ```
